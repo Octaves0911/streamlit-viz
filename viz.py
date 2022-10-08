@@ -23,8 +23,8 @@ col2.subheader("Unigrams and Bigrams")
 
 @st.cache
 def init_data() -> pd.DataFrame:
-    df = pd.read_csv('datav4.csv')
-    
+    df = pd.read_csv('datav5.csv')
+
     return df
 df = init_data()
 years = df.publish_year.unique()
@@ -58,18 +58,76 @@ def fig_trace_update(fig):
          )
         return fig
 
+def main_viz():
+    
+    fig_main = go.Figure()
+    fig_main.add_trace(go.Scatter(x = df['ebm1'], y = df['ebm2'],  mode = 'markers', marker_color = df['color_code'], opacity = 1, text = df['title'], customdata=df['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
+    fig_main = fig_trace_update(fig_main)
+
+    with col1:
+        selected_data = plotly_events(
+            fig_main,
+            select_event= True
+        )
+    display_df, filter_data = get_ngrams(selected_data,df)
+            
+
+    if len(display_df):
+        with col2:
+            st.dataframe(display_df)
+            st.dataframe(filter_data)
+    else:
+        col2.write('Select a range of papers by drawing a cluster rectangle (hold and drag mouse) on top of the projection landscape.')
+
+
+def search(key):
+    paper_idx = []
+    for idx,i in enumerate(df['title_auth']):
+        for j in i.split():
+            if key in j:
+                paper_idx.append(idx)
+    paper_idx = set(paper_idx)
+    if len(paper_idx) == 0:
+        st.error("No match Found")
+        
+        return
+    filter_data_search = df.filter(items = paper_idx, axis = 0)
+    fig_search = go.Figure()
+    fig_search.add_trace(go.Scatter( x = filter_data_search['ebm1'], y = filter_data_search['ebm2'],  mode = 'markers', marker_color = filter_data_search['color_code'], opacity = 1, text = filter_data_search['title'], customdata=filter_data_search['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
+    
+    fig_search = fig_trace_update(fig_search)
+
+    with col1:  
+        selected_data_search = plotly_events(
+            fig_search,
+            select_event= True
+        )
+    display_df, filter_data = get_ngrams(selected_data_search,df)
+    if len(display_df):
+        with col2:
+            st.dataframe(display_df)
+            st.dataframe(filter_data)
+    else:
+        col2.write('Select a range of papers by drawing a cluster rectangle (hold and drag mouse) on top of the projection landscape.')
+
+
+    
+    
+    
+
+
 def get_ngrams(selected_data, filter_df):
     selected_paper = [el['pointIndex'] for el in selected_data]
     filter_data = filter_df.filter(items = selected_paper, axis = 0)
 
-    filter_title = " ".join([x for x in filter_data['title']])
+    filter_title = " ".join([x for x in filter_data['title_auth']])
     tokens_without_sw = [word.lower() for word in filter_title.split() if not word.lower() in all_stopwords]
     bigram_count = Counter(ngrams(tokens_without_sw, 2))
     unigram_count = Counter(ngrams(tokens_without_sw, 1))
     filter_data.reset_index(drop = True, inplace=True)
     display_df = pd.DataFrame()
-    display_df['unigrams'] = [i[0][0] for i in unigram_count.most_common(300)]
-    display_df['bigrams'] = [ f'{i[0][0]} {i[0][1]}' for i in bigram_count.most_common(300)]
+    display_df['unigrams'] = [i[0][0] for i in unigram_count.most_common(10)]
+    display_df['bigrams'] = [ f'{i[0][0]} {i[0][1]}' for i in bigram_count.most_common(10)]
 
     return display_df,filter_data[['title','authors']]
 
@@ -122,44 +180,28 @@ def year_filter_graph():
         col2.write('Select a range of papers by drawing a cluster rectangle (hold and drag mouse) on top of the projection landscape.')
 
 
-def main_viz():
-    fig_main = go.Figure()
-    fig_main.add_trace(go.Scatter(x = df['ebm1'], y = df['ebm2'],  mode = 'markers', marker_color = df['color_code'], opacity = 1, text = df['title'], customdata=df['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
-    fig_main = fig_trace_update(fig_main)
-
-    with col1:
-        selected_data = plotly_events(
-            fig_main,
-            select_event= True
-        )
-    display_df, filter_data = get_ngrams(selected_data,df)
-    with col2:
-        key = st.text_input("Enter the keyword", placeholder = "Search")
-        bt = st.button("search")
-
-        if bt:
-            
-
-    if len(display_df):
-        with col2:
-            st.dataframe(display_df)
-            st.dataframe(filter_data)
-    else:
-        col2.write('Select a range of papers by drawing a cluster rectangle (hold and drag mouse) on top of the projection landscape.')
 
 
-with col1:
-  
-    filter_year = st.checkbox("Filter by Year")
-    if filter_year is False:
-        main_viz()
-    else:
+with col2:
+        st.session_state.key = st.text_input("Enter the keyword", placeholder = "Search")
+        st.session_state.bt = st.button("search")
 
-        year_filter_graph()
-
-
-
+        if st.session_state.bt or st.session_state.key:
+            search(st.session_state.key)
     
+with col1:
+    print(f"out  {st.session_state.bt} {st.session_state.key} ")
+    
+    if not st.session_state.bt and not st.session_state.key:
+  
+        filter_year = st.checkbox("Filter by Year")
+        if filter_year is False:
 
+            print(f"main  {st.session_state.bt} {st.session_state.key} ")
+            main_viz()
+        else:
 
+            year_filter_graph()
+
+col3, col4 = st.columns([1, 1])
    

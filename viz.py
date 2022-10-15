@@ -1,3 +1,4 @@
+from turtle import onclick
 from xarray import align
 import streamlit as st
 import pandas as pd
@@ -72,25 +73,42 @@ def main_viz():
     display_df, filter_data = get_ngrams(selected_data,df)
             
 
-    if len(display_df):
-        with col2:
-            st.dataframe(display_df)
-            st.dataframe(filter_data)
-    else:
-        col2.write('Select a range of papers by drawing a cluster rectangle (hold and drag mouse) on top of the projection landscape.')
-
+    # if len(display_df):
+    #     with col2:
+    #         st.dataframe(display_df)
+    #         st.dataframe(filter_data)
+    # else:
+    #     col2.write('Select a range of papers by drawing a cluster rectangle (hold and drag mouse) on top of the projection landscape.')
+    st.session_state.display_df = display_df
 
 def search(key):
-    paper_idx = []
-    for idx,i in enumerate(df['title_auth']):
-        for j in i.split():
-            if key in j:
-                paper_idx.append(idx)
-    paper_idx = set(paper_idx)
-    if len(paper_idx) == 0:
-        st.error("No match Found")
-        
-        return
+    if len(key.split()) > 1:
+        paper_idx = []
+        for idx,i in enumerate(df['title_auth']):
+            sing_split = i.split()
+            pair_text = [f'{sing_split[i]} {sing_split[i+1]}' for i in range(len(sing_split) -1 )]
+
+            for j in pair_text:
+                if key in j:
+                    paper_idx.append(idx)
+        paper_idx = set(paper_idx)
+
+        if len(paper_idx) == 0:
+            st.error("No match Found")
+            return
+
+    else:
+        paper_idx = []
+        for idx,i in enumerate(df['title_auth']):
+            for j in i.split():
+                if key in j:
+                    paper_idx.append(idx)
+        paper_idx = set(paper_idx)
+        if len(paper_idx) == 0:
+            st.error("No match Found")
+            
+            return
+
     filter_data_search = df.filter(items = paper_idx, axis = 0)
     fig_search = go.Figure()
     fig_search.add_trace(go.Scatter( x = filter_data_search['ebm1'], y = filter_data_search['ebm2'],  mode = 'markers', marker_color = filter_data_search['color_code'], opacity = 1, text = filter_data_search['title'], customdata=filter_data_search['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
@@ -103,13 +121,14 @@ def search(key):
             select_event= True
         )
     display_df, filter_data = get_ngrams(selected_data_search,df)
-    if len(display_df):
-        with col2:
-            st.dataframe(display_df)
-            st.dataframe(filter_data)
-    else:
-        col2.write('Select a range of papers by drawing a cluster rectangle (hold and drag mouse) on top of the projection landscape.')
-
+    # if len(display_df):
+    #     with col2:
+    #         pass
+    #         # st.dataframe(display_df)
+    #         # st.dataframe(filter_data)
+    # else:
+    #     col2.write('Select a range of papers by drawing a cluster rectangle (hold and drag mouse) on top of the projection landscape.')
+    st.session_state.display_df = display_df
 
     
     
@@ -172,15 +191,17 @@ def year_filter_graph():
 
     display_df, filter_data = get_ngrams(selected_data,df)
 
-    if len(display_df):
-        with col2:
-            st.dataframe(display_df)
-            st.dataframe(filter_data)
-    else:
-        col2.write('Select a range of papers by drawing a cluster rectangle (hold and drag mouse) on top of the projection landscape.')
+    # if len(display_df):
+    #     with col2:
+    #         st.dataframe(display_df)
+    #         st.dataframe(filter_data)
+    # else:
+    #     col2.write('Select a range of papers by drawing a cluster rectangle (hold and drag mouse) on top of the projection landscape.')
+    st.session_state.display_df = display_df
 
 
-
+# if len(st.session_state.display_df.unigrams):
+#     st.session_state.bt_plot = True
 
 with col2:
         st.session_state.key = st.text_input("Enter the keyword", placeholder = "Search")
@@ -190,18 +211,34 @@ with col2:
             search(st.session_state.key)
     
 with col1:
-    print(f"out  {st.session_state.bt} {st.session_state.key} ")
+    #print(f"out  {st.session_state.bt} {st.session_state.key} ")
     
-    if not st.session_state.bt and not st.session_state.key:
+    if not st.session_state.bt and not st.session_state.key: #and not st.session_state.bt_plot:
   
         filter_year = st.checkbox("Filter by Year")
         if filter_year is False:
 
-            print(f"main  {st.session_state.bt} {st.session_state.key} ")
             main_viz()
         else:
 
             year_filter_graph()
 
-col3, col4 = st.columns([1, 1])
-   
+if len(st.session_state.display_df.unigrams):
+    st.subheader("Unigrams")
+    def search_onclick(key):
+        st.session_state.bt_plot = True
+        search(key)
+
+    btcol1, btcol2, btcol3, btcol4, btcol5,btcol6, btcol7,btcol8, btcol9,btcol10 = st.columns([1,1,1,1,1,1,1,1,1,1])
+    btcol = [btcol1, btcol2, btcol3, btcol4, btcol5,btcol6, btcol7,btcol8, btcol9,btcol10]
+    for i, uni in zip(btcol,st.session_state.display_df.unigrams):
+        with i:
+            st.button(uni, on_click= search_onclick, args=(uni,))
+            
+    st.subheader("Bigrams")
+    btcol1, btcol2, btcol3, btcol4, btcol5,btcol6, btcol7,btcol8, btcol9,btcol10 = st.columns([1,1,1,1,1,1,1,1,1,1])
+    btcol = [btcol1, btcol2, btcol3, btcol4, btcol5,btcol6, btcol7,btcol8, btcol9,btcol10]
+    for i, uni in zip(btcol,st.session_state.display_df.bigrams):
+        with i:
+            st.button(uni, on_click= search_onclick, args=(uni,))
+            #st.button(uni)

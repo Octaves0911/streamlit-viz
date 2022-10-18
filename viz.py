@@ -19,12 +19,13 @@ st.set_page_config(layout='wide')
 filter_year = None
 all_stopwords = stopwords.words('english')
 col1, col2 = st.columns([4, 1])
-col1.subheader("Disaster Paper Visualization")
-col2.subheader("Unigrams and Bigrams")
-
+col1.subheader("Explore Papers on Natural Disasters")
+col1.caption('Demo based on 8000 papers realted to natural disasters plotted into 2 dimension. We have used [SPECTER](https://arxiv.org/abs/2004.07180) model for encoding the papers and then used UMap for dimensionality Reduction . You use the slider below the plot to view all the papers published before a particular year.')
+# col2.subheader("Unigrams and Bigrams")
+st.session_state.bt_plot = False
 @st.cache
 def init_data() -> pd.DataFrame:
-    df = pd.read_csv('datav5.csv')
+    df = pd.read_csv('datav7.csv')
 
     return df
 df = init_data()
@@ -38,13 +39,13 @@ def init_slider(fig_slider):
     fig_slider.add_trace(go.Scatter(visible = False, x = df_filter['ebm1'], y = df_filter['ebm2'],  mode = 'markers', marker_color = df_filter['color_code'], opacity = 0.2, text = df_filter['title'], customdata=df_filter['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
 
 
-    fig_slider.data[10].visible = True
+    fig_slider.data[-2].visible = True
     fig_slider.data[-1].visible = True
 
     return fig_slider
 
 def fig_trace_update(fig):
-        fig.update_traces(marker_size=3 )
+        fig.update_traces(marker_size=4 )
         fig.update_xaxes(visible=False)
         fig.update_yaxes(visible=False)
 
@@ -81,33 +82,49 @@ def main_viz():
     #     col2.write('Select a range of papers by drawing a cluster rectangle (hold and drag mouse) on top of the projection landscape.')
     st.session_state.display_df = display_df
 
-def search(key):
-    if len(key.split()) > 1:
+def search(key, mode):
+
+    if mode == 'search':
+        if len(key.split()) > 1:
+            paper_idx = []
+            for idx,i in enumerate(df['title_auth']):
+                sing_split = i.split()
+                pair_text = [f'{sing_split[i]} {sing_split[i+1]}' for i in range(len(sing_split) -1 )]
+
+                for j in pair_text:
+                    if key in j:
+                        paper_idx.append(idx)
+            paper_idx = set(paper_idx)
+
+            if len(paper_idx) == 0:
+                st.error("No match Found")
+                return
+
+        else:
+            paper_idx = []
+            for idx,i in enumerate(df['title_auth']):
+                for j in i.split():
+                    if key in j:
+                        paper_idx.append(idx)
+            paper_idx = set(paper_idx)
+            if len(paper_idx) == 0:
+                st.error("No match Found")
+                
+                return
+    if mode == 'auth':
         paper_idx = []
-        for idx,i in enumerate(df['title_auth']):
-            sing_split = i.split()
-            pair_text = [f'{sing_split[i]} {sing_split[i+1]}' for i in range(len(sing_split) -1 )]
-
-            for j in pair_text:
-                if key in j:
+        for idx,i in enumerate(df['authors_preprocessed']):
+            i = i[1:-1].replace("'","").split(",")
+            for j in i:
+                if key.lower() == j.strip():
                     paper_idx.append(idx)
-        paper_idx = set(paper_idx)
-
-        if len(paper_idx) == 0:
-            st.error("No match Found")
-            return
-
-    else:
-        paper_idx = []
-        for idx,i in enumerate(df['title_auth']):
-            for j in i.split():
-                if key in j:
-                    paper_idx.append(idx)
+            
         paper_idx = set(paper_idx)
         if len(paper_idx) == 0:
             st.error("No match Found")
             
             return
+
 
     filter_data_search = df.filter(items = paper_idx, axis = 0)
     fig_search = go.Figure()
@@ -167,7 +184,7 @@ def year_filter_graph():
         steps.append(step)
 
     sliders = [dict(
-        active=10,
+        active=len(fig_slider.data) - 2,
         currentvalue={"prefix": "Until Year: "},
         pad={"t": 50},
         steps=steps,
@@ -205,29 +222,42 @@ def year_filter_graph():
 
 with col2:
         st.session_state.key = st.text_input("Enter the keyword", placeholder = "Search")
-        st.session_state.bt = st.button("search")
+        st.caption("Use max two words")
+        st.session_state.bt = st.button("Search by Keyword")
+        st.session_state.bt_auth = st.button("Search by Author")
 
-        if st.session_state.bt or st.session_state.key:
-            search(st.session_state.key)
+        if len(st.session_state.key.split()) > 2 and st.session_state.bt :
+            st.error("Entered more than two words. Please enter a valid input.")
+        
+        else:
+            if st.session_state.bt or st.session_state.key or st.session_state.bt_auth:
+                if st.session_state.bt_auth:
+                    search(st.session_state.key,mode = 'auth')
+                else:
+                    search(st.session_state.key, mode = 'search')
+                    
     
 with col1:
     #print(f"out  {st.session_state.bt} {st.session_state.key} ")
     
     if not st.session_state.bt and not st.session_state.key: #and not st.session_state.bt_plot:
   
-        filter_year = st.checkbox("Filter by Year")
-        if filter_year is False:
+        # filter_year = st.checkbox("Filter by Year")
+        # if filter_year is False:
 
-            main_viz()
-        else:
-
-            year_filter_graph()
+        #     main_viz()
+        # else:
+        #print(st.session_state.bt_plot)
+        year_filter_graph()
 
 if len(st.session_state.display_df.unigrams):
     st.subheader("Unigrams")
     def search_onclick(key):
+        with col1:
+            st.subheader("Filter Result")
+            st.caption("This shows all the paper that has the selected unigram/bigram in their title or abstract.")
         st.session_state.bt_plot = True
-        search(key)
+        search(key,mode= 'search')
 
     btcol1, btcol2, btcol3, btcol4, btcol5,btcol6, btcol7,btcol8, btcol9,btcol10 = st.columns([1,1,1,1,1,1,1,1,1,1])
     btcol = [btcol1, btcol2, btcol3, btcol4, btcol5,btcol6, btcol7,btcol8, btcol9,btcol10]
@@ -241,4 +271,4 @@ if len(st.session_state.display_df.unigrams):
     for i, uni in zip(btcol,st.session_state.display_df.bigrams):
         with i:
             st.button(uni, on_click= search_onclick, args=(uni,))
-            #st.button(uni)
+   

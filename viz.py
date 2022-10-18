@@ -1,19 +1,10 @@
-from turtle import onclick
-from xarray import align
 import streamlit as st
 import pandas as pd
-import numpy as np
-import nltk
-import matplotlib.pyplot as plt
-import plotly.express as px
 import plotly.graph_objects as go
-import time
 from streamlit_plotly_events import plotly_events
 from nltk.corpus import stopwords
 from collections import Counter
 from nltk import ngrams
-import time
-
 st.set_page_config(layout='wide')
 
 filter_year = None

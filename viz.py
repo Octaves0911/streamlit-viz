@@ -18,7 +18,7 @@ col1.caption('Demo based on 8000 papers realted to natural disasters plotted int
 st.session_state.bt_plot = False
 @st.cache
 def init_data() -> pd.DataFrame:
-    df = pd.read_csv('datav8.csv')
+    df = pd.read_csv('datav9.csv')
 
     return df
 df = init_data()

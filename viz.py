@@ -1,23 +1,15 @@
-from turtle import onclick
-from xarray import align
 import streamlit as st
 import pandas as pd
-import numpy as np
-import nltk
-import matplotlib.pyplot as plt
-import plotly.express as px
 import plotly.graph_objects as go
-import time
 from streamlit_plotly_events import plotly_events
 from nltk.corpus import stopwords
 from collections import Counter
 from nltk import ngrams
-import time
 
 st.set_page_config(layout='wide')
 
 filter_year = None
-all_stopwords = stopwords.words('english')
+all_stopwords = stopwords.words('english') + ['[sep]', 'results', 'show', 'using', 'two', 'different', 'also','new','control', 'find','study','use','however,','approach', 'method','used','may',  'due', 'using']
 col1, col2 = st.columns([4, 1])
 col1.subheader("Explore Papers on Natural Disasters")
 col1.caption('Demo based on 8000 papers realted to natural disasters plotted into 2 dimension. We have used [SPECTER](https://arxiv.org/abs/2004.07180) model for encoding the papers and then used UMap for dimensionality Reduction . You use the slider below the plot to view all the papers published before a particular year.')
@@ -25,7 +17,7 @@ col1.caption('Demo based on 8000 papers realted to natural disasters plotted int
 st.session_state.bt_plot = False
 @st.cache
 def init_data() -> pd.DataFrame:
-    df = pd.read_csv('datav7.csv')
+    df = pd.read_csv('datav8.csv')
 
     return df
 df = init_data()
@@ -35,8 +27,8 @@ def init_slider(fig_slider):
 
     for i in range(1990,2023):
         df_filter = df.loc[df['publish_year'] < i]
-        fig_slider.add_trace(go.Scatter(visible = False, x = df_filter['ebm1'], y = df_filter['ebm2'],  mode = 'markers', marker_color = df_filter['color_code'], opacity = 1, text = df_filter['title'], customdata=df_filter['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
-    fig_slider.add_trace(go.Scatter(visible = False, x = df_filter['ebm1'], y = df_filter['ebm2'],  mode = 'markers', marker_color = df_filter['color_code'], opacity = 0.2, text = df_filter['title'], customdata=df_filter['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
+        fig_slider.add_trace(go.Scatter(visible = False, x = df_filter['emb1'], y = df_filter['emb2'],  mode = 'markers', marker_color = df_filter['color_code'], opacity = 1, text = df_filter['title'], customdata=df_filter['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
+    fig_slider.add_trace(go.Scatter(visible = False, x = df_filter['emb1'], y = df_filter['emb2'],  mode = 'markers', marker_color = df_filter['color_code'], opacity = 0.2, text = df_filter['title'], customdata=df_filter['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
 
 
     fig_slider.data[-2].visible = True
@@ -63,7 +55,7 @@ def fig_trace_update(fig):
 def main_viz():
     
     fig_main = go.Figure()
-    fig_main.add_trace(go.Scatter(x = df['ebm1'], y = df['ebm2'],  mode = 'markers', marker_color = df['color_code'], opacity = 1, text = df['title'], customdata=df['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
+    fig_main.add_trace(go.Scatter(x = df['emb1'], y = df['emb2'],  mode = 'markers', marker_color = df['color_code'], opacity = 1, text = df['title'], customdata=df['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
     fig_main = fig_trace_update(fig_main)
 
     with col1:
@@ -87,7 +79,7 @@ def search(key, mode):
     if mode == 'search':
         if len(key.split()) > 1:
             paper_idx = []
-            for idx,i in enumerate(df['title_auth']):
+            for idx,i in enumerate(df['title_abs']):
                 sing_split = i.split()
                 pair_text = [f'{sing_split[i]} {sing_split[i+1]}' for i in range(len(sing_split) -1 )]
 
@@ -102,7 +94,7 @@ def search(key, mode):
 
         else:
             paper_idx = []
-            for idx,i in enumerate(df['title_auth']):
+            for idx,i in enumerate(df['title_abs']):
                 for j in i.split():
                     if key in j:
                         paper_idx.append(idx)
@@ -128,7 +120,7 @@ def search(key, mode):
 
     filter_data_search = df.filter(items = paper_idx, axis = 0)
     fig_search = go.Figure()
-    fig_search.add_trace(go.Scatter( x = filter_data_search['ebm1'], y = filter_data_search['ebm2'],  mode = 'markers', marker_color = filter_data_search['color_code'], opacity = 1, text = filter_data_search['title'], customdata=filter_data_search['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
+    fig_search.add_trace(go.Scatter( x = filter_data_search['emb1'], y = filter_data_search['emb2'],  mode = 'markers', marker_color = filter_data_search['color_code'], opacity = 1, text = filter_data_search['title'], customdata=filter_data_search['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
     
     fig_search = fig_trace_update(fig_search)
 
@@ -156,7 +148,7 @@ def get_ngrams(selected_data, filter_df):
     selected_paper = [el['pointIndex'] for el in selected_data]
     filter_data = filter_df.filter(items = selected_paper, axis = 0)
 
-    filter_title = " ".join([x for x in filter_data['title_auth']])
+    filter_title = " ".join([x for x in filter_data['title_abs']])
     tokens_without_sw = [word.lower() for word in filter_title.split() if not word.lower() in all_stopwords]
     bigram_count = Counter(ngrams(tokens_without_sw, 2))
     unigram_count = Counter(ngrams(tokens_without_sw, 1))
@@ -164,6 +156,7 @@ def get_ngrams(selected_data, filter_df):
     display_df = pd.DataFrame()
     display_df['unigrams'] = [i[0][0] for i in unigram_count.most_common(10)]
     display_df['bigrams'] = [ f'{i[0][0]} {i[0][1]}' for i in bigram_count.most_common(10)]
+    print([i[0][0] for i in unigram_count.most_common(300)])
 
     return display_df,filter_data[['title','authors']]
 

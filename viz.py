@@ -1,3 +1,5 @@
+import nltk
+nltk.download('stopwords')
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -5,7 +7,6 @@ from streamlit_plotly_events import plotly_events
 from nltk.corpus import stopwords
 from collections import Counter
 from nltk import ngrams
-
 st.set_page_config(layout='wide')
 
 filter_year = None

@@ -29,7 +29,7 @@ def init_slider(fig_slider):
     for i in range(1990,2023):
         df_filter = df.loc[df['publish_year'] < i]
         fig_slider.add_trace(go.Scatter(visible = False, x = df_filter['emb1'], y = df_filter['emb2'],  mode = 'markers', marker_color = df_filter['color_code'], opacity = 1, text = df_filter['title'], customdata=df_filter['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
-    fig_slider.add_trace(go.Scatter(visible = False, x = df_filter['emb1'], y = df_filter['emb2'],  mode = 'markers', marker_color = df_filter['color_code'], opacity = 0.2, text = df_filter['title'], customdata=df_filter['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
+    fig_slider.add_trace(go.Scatter(visible = False, x = df_filter['emb1'], y = df_filter['emb2'],  mode = 'markers', marker_color = df_filter['color_code'], opacity = 0.1, text = df_filter['title'], customdata=df_filter['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
 
 
     fig_slider.data[-2].visible = True
@@ -37,27 +37,43 @@ def init_slider(fig_slider):
 
     return fig_slider
 
-def fig_trace_update(fig):
+def fig_trace_update(fig, mode):
         fig.update_traces(marker_size=4 )
         fig.update_xaxes(visible=False)
         fig.update_yaxes(visible=False)
+        fig.update_xaxes(range=[-4.4, 13.4])
+        fig.update_yaxes(range=[-1, 13])
 
-        fig.update_layout(
-            showlegend=False,
-            template = "plotly_white",
-            autosize=True,
-            # width=1000,
-            height=650,
-            margin=dict(l=0,r=0,b=0,t=0,pad=0
-            ),
-         )
+
+        if mode == 'search':
+            fig.update_layout(
+                showlegend=False,
+                template = "plotly_white",
+                autosize=True,
+                #width=800,
+                height=500,
+                #margin=dict(l=0,r=0,b=0,t=0,pad=0
+                #),
+            )
+        else:
+            fig.update_layout(
+                showlegend=False,
+                template = "plotly_white",
+                autosize=True,
+                #width=800,
+                height=700,
+                #margin=dict(l=0,r=0,b=0,t=0,pad=0
+                #),
+            )
+
         return fig
 
 def main_viz():
     
     fig_main = go.Figure()
     fig_main.add_trace(go.Scatter(x = df['emb1'], y = df['emb2'],  mode = 'markers', marker_color = df['color_code'], opacity = 1, text = df['title'], customdata=df['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
-    fig_main = fig_trace_update(fig_main)
+    
+    fig_main = fig_trace_update(fig_main, mode = 'main')
 
     with col1:
         selected_data = plotly_events(
@@ -122,8 +138,8 @@ def search(key, mode):
     filter_data_search = df.filter(items = paper_idx, axis = 0)
     fig_search = go.Figure()
     fig_search.add_trace(go.Scatter( x = filter_data_search['emb1'], y = filter_data_search['emb2'],  mode = 'markers', marker_color = filter_data_search['color_code'], opacity = 1, text = filter_data_search['title'], customdata=filter_data_search['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
-    
-    fig_search = fig_trace_update(fig_search)
+    fig_search.add_trace(go.Scatter(visible = True, x = df['emb1'], y = df['emb2'],  mode = 'markers', marker_color = df['color_code'], opacity = 0.1, text = df['title'], customdata=df['authors'], hovertemplate = 'Title: %{text} <br>' + 'Author: %{customdata}'))
+    fig_search = fig_trace_update(fig_search, mode = 'search')
 
     with col1:  
         selected_data_search = plotly_events(
@@ -157,7 +173,7 @@ def get_ngrams(selected_data, filter_df):
     display_df = pd.DataFrame()
     display_df['unigrams'] = [i[0][0] for i in unigram_count.most_common(10)]
     display_df['bigrams'] = [ f'{i[0][0]} {i[0][1]}' for i in bigram_count.most_common(10)]
-    print([i[0][0] for i in unigram_count.most_common(300)])
+   
 
     return display_df,filter_data[['title','authors']]
 
@@ -189,7 +205,7 @@ def year_filter_graph():
         sliders=sliders
     )
 
-    fig_slider = fig_trace_update(fig_slider)
+    fig_slider = fig_trace_update(fig_slider, mode = 'slider')
 
     # st.plotly_chart(fig_slider)
     with col1:
@@ -227,6 +243,8 @@ with col2:
             if st.session_state.bt or st.session_state.key or st.session_state.bt_auth:
                 if st.session_state.bt_auth:
                     search(st.session_state.key,mode = 'auth')
+                elif st.session_state.key == 'True':
+                    pass
                 else:
                     search(st.session_state.key, mode = 'search')
                     
@@ -234,7 +252,7 @@ with col2:
 with col1:
     #print(f"out  {st.session_state.bt} {st.session_state.key} ")
     
-    if not st.session_state.bt and not st.session_state.key: #and not st.session_state.bt_plot:
+    if not st.session_state.bt and not st.session_state.key : #and not st.session_state.bt_plot:
   
         # filter_year = st.checkbox("Filter by Year")
         # if filter_year is False:
@@ -247,6 +265,7 @@ with col1:
 if len(st.session_state.display_df.unigrams):
     st.subheader("Unigrams")
     def search_onclick(key):
+        st.session_state.key = "True"
         with col1:
             st.subheader("Filter Result")
             st.caption("This shows all the paper that has the selected unigram/bigram in their title or abstract.")

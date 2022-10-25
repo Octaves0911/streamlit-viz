@@ -16,6 +16,10 @@ col1.subheader("Explore Papers on Natural Disasters")
 col1.caption('Demo based on 8000 papers realted to natural disasters plotted into 2 dimension. We have used [SPECTER](https://arxiv.org/abs/2004.07180) model for encoding the papers and then used UMap for dimensionality Reduction . You use the slider below the plot to view all the papers published before a particular year.')
 # col2.subheader("Unigrams and Bigrams")
 st.session_state.bt_plot = False
+
+if 'prev_key'  not in st.session_state:
+    st.session_state.prev_key = None
+
 @st.cache
 def init_data() -> pd.DataFrame:
     df = pd.read_csv('datav9.csv')
@@ -171,8 +175,8 @@ def get_ngrams(selected_data, filter_df):
     unigram_count = Counter(ngrams(tokens_without_sw, 1))
     filter_data.reset_index(drop = True, inplace=True)
     display_df = pd.DataFrame()
-    display_df['unigrams'] = [i[0][0] for i in unigram_count.most_common(10)]
-    display_df['bigrams'] = [ f'{i[0][0]} {i[0][1]}' for i in bigram_count.most_common(10)]
+    display_df['unigrams'] = [i[0][0] for i in unigram_count.most_common(15)]
+    display_df['bigrams'] = [ f'{i[0][0]} {i[0][1]}' for i in bigram_count.most_common(15)]
    
 
     return display_df,filter_data[['title','authors']]
@@ -266,22 +270,26 @@ if len(st.session_state.display_df.unigrams):
     st.subheader("Unigrams")
     def search_onclick(key):
         st.session_state.key = "True"
+        st.session_state.prev_key = key
         with col1:
             st.subheader("Filter Result")
             st.caption("This shows all the paper that has the selected unigram/bigram in their title or abstract.")
         st.session_state.bt_plot = True
         search(key,mode= 'search')
 
+   
+    df_uni = st.session_state.display_df.unigrams[st.session_state.display_df.unigrams != st.session_state.prev_key]
     btcol1, btcol2, btcol3, btcol4, btcol5,btcol6, btcol7,btcol8, btcol9,btcol10 = st.columns([1,1,1,1,1,1,1,1,1,1])
     btcol = [btcol1, btcol2, btcol3, btcol4, btcol5,btcol6, btcol7,btcol8, btcol9,btcol10]
-    for i, uni in zip(btcol,st.session_state.display_df.unigrams):
+    for i, uni in zip(btcol,df_uni):
         with i:
             st.button(uni, on_click= search_onclick, args=(uni,))
             
     st.subheader("Bigrams")
+    df_bi = st.session_state.display_df.bigrams[st.session_state.display_df.bigrams != st.session_state.prev_key]
     btcol1, btcol2, btcol3, btcol4, btcol5,btcol6, btcol7,btcol8, btcol9,btcol10 = st.columns([1,1,1,1,1,1,1,1,1,1])
     btcol = [btcol1, btcol2, btcol3, btcol4, btcol5,btcol6, btcol7,btcol8, btcol9,btcol10]
-    for i, uni in zip(btcol,st.session_state.display_df.bigrams):
+    for i, uni in zip(btcol,df_bi):
         with i:
             st.button(uni, on_click= search_onclick, args=(uni,))
    

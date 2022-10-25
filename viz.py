@@ -272,7 +272,7 @@ if len(st.session_state.display_df.unigrams):
         st.session_state.key = "True"
         st.session_state.prev_key = key
         with col1:
-            st.subheader("Filter Result")
+            st.subheader(f'Filter Result for "{st.session_state.prev_key.capitalize()}"')
             st.caption("This shows all the paper that has the selected unigram/bigram in their title or abstract.")
         st.session_state.bt_plot = True
         search(key,mode= 'search')
